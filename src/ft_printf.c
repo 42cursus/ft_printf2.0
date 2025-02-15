@@ -20,9 +20,7 @@ int	ft_printf(const char *format, ...)
 	if (!format || !*format)
 		return (0);
 	va_start(ap, format);
-
 	count = ft_vprintf(format, ap);
-
 	va_end(ap);
 	return (count);
 }

@@ -13,7 +13,7 @@
 
 NAME		=	libftprintf.a
 LIBTMP		=	libtmp.a
-CC			=	clang
+CC			=	cc
 CFLAGS		=	-g3 -Wall -Wextra -Werror -iquote $(INC_DIR)/
 AR			=	ar
 ARFLAGS		=	rcs
@@ -51,21 +51,15 @@ $(LIBFT):
 $(OBJ_DIR):
 					mkdir -pv $(OBJ_DIR)
 
-$(OBJ_DIR)/main.o:	tests/main.c $(OBJ_DIR)
-					$(CC) $(CFLAGS) -c $< -o $@
-
-main:				$(OBJ_DIR)/main.o $(NAME) $(LIBFT)
-					$(CC) -lm $^ -o $@
-
 clean:
 					make -C $(LIBFT_PATH) clean
-					$(RM) $(OBJ_DIR) a.out main
+					$(RM) $(OBJ_DIR) a.out 
 
 fclean:				clean
 					make -C $(LIBFT_PATH) fclean
 					$(RM) $(NAME)
 
-re:					fclean all main
+re:					fclean all 
 
 norm:
 					@norminette $(SRC_FILES:%.c=$(SRC_DIR)/%.c) $(INC_DIR)/*
