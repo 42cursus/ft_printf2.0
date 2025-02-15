@@ -1,0 +1,4 @@
+[submodule "lib/ft"]
+	path = lib/ft
+	branch = master
+	url = git@github.com:42cursus/libft.git
