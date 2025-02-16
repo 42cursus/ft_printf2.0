@@ -15,6 +15,13 @@
 
 #ifndef USE_VSNPRINTF
 
+void	ft_putbyte_fd(const char *const s, size_t nbytes, int fd)
+{
+	if (fd > SHRT_MAX || fd < 0 || !s)
+		return ;
+	write(fd, s, nbytes);
+}
+
 int	ft_vprintf(const char *format, va_list ap)
 {
 	int		count;
@@ -27,7 +34,8 @@ int	ft_vprintf(const char *format, va_list ap)
 	if (string)
 	{
 		ft_vsnprintf(string, count + FT_TERMINATOR, format, ap_copy);
-		ft_putstr_fd(string, STDOUT_FILENO);
+//		ft_putstr_fd(string, STDOUT_FILENO);
+		ft_putbyte_fd(string, count, STDOUT_FILENO);
 	}
 	free(string);
 	return (count);

@@ -45,9 +45,10 @@ $(OBJ_DIR)/%.o:		$(SRC_DIR)/%.c
 
 $(NAME):			$(LIBFT) $(OBJ_DIR) $(OBJS)
 					@$(AR) $(ARFLAGS) $(OBJ_DIR)/$(LIBTMP) $(OBJS)
-					@$(CC) -nostdlib -r -o $(OBJ_DIR)/$(NAME) $(OBJ_DIR)/ft_printf.o \
+					@$(CC) $(CFLAGS) -nostdlib -r $(OBJ_DIR)/ft_printf.o \
+						-o $(NAME:%.a=$(OBJ_DIR)/%.o) \
 						-Wl,--no-whole-archive $(OBJ_DIR)/$(LIBTMP) $(LIBFT)
-					@$(AR) $(ARFLAGS) $(NAME) $(OBJ_DIR)/$(NAME)
+					@$(AR) $(ARFLAGS) $(NAME) $(NAME:%.a=$(OBJ_DIR)/%.o)
 
 $(LIBFT):
 					@$(MAKE) -C $(LIBFT_PATH) --no-print-directory -j8 all

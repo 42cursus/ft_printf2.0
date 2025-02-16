@@ -49,7 +49,7 @@ set(COMMON_LDFLAGS
 
 set(FT_LIB_NAME ft)
 set(FT_LIB_FILENAME libft.a)
-set(FT_LIB_DIR "${PROJECT_SOURCE_DIR}/lib/ft")
+set(FT_LIB_DIR "${PROJECT_SOURCE_DIR}/lib/libft")
 
 file(GLOB_RECURSE FT_LIB_HEADERS "${FT_LIB_DIR}/*.h")
 file(GLOB_RECURSE FT_LIB_SOURCES "${FT_LIB_DIR}/ft_*.c")
