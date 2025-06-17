@@ -22,7 +22,7 @@ int	ft_vsprintf(char *str, const char *format, va_list ap)
 	result = ft_vsnprintf(NULL, 0, format, ap);
 	if (result < 0)
 		return (FT_ERROR);
-	ft_vsnprintf(str, (size_t)result + 1, format, ap);
+	result = ft_vsnprintf(str, (size_t)result + 1, format, ap);
 	va_end(ap_save);
 	return (result);
 }
@@ -41,18 +41,13 @@ char	*ft_strchrnul(const char *s, int c)
 ssize_t 	copy_as_is(size_t size, const char **fmt, char **buf)
 {
 	const char *const	ptr = ft_strchrnul((*fmt), '%');
-	const size_t		i = ptr - (*fmt);
-	char *const			to_put = ft_strndup((*fmt), i);
-	size_t				desired;
+	const size_t		i = (size_t)(ptr - *fmt);
+	const size_t		desired = MIN(i + FT_TERMINATOR, size);
 
-	desired = MIN(i + FT_TERMINATOR, size);
-	ft_memcpy((*buf), to_put, desired * sizeof(char));
-	free(to_put);
-	(*fmt) = (ptr - 1);
-	if (desired > 1)
-		desired--;
+	ft_memcpy((*buf), *fmt, desired * sizeof(char));
 	if (*buf)
-		(*buf) += desired;
+		(*buf) += desired - 1 * (desired > 1);
+	(*fmt) = (ptr - 1);
 	return ((ssize_t)i);
 }
 
@@ -62,50 +57,53 @@ int	ft_vsnprintf_internal(char **str, size_t size, const t_snprintf_f *lut,
 	ssize_t			ret;
 	register char	c;
 	char			*seek;
+	int				error_flag = 0;
 	const char		*fmt = str[0];
 	char *const		buf = str[1];
 
 	seek = buf;
 	ret = 0;
 	c = *fmt;
-	while (c != '\0' && ret != -1)
+	while (c != '\0' && error_flag != FT_ERROR)
 	{
 		size_t rem = size - (seek - buf);
 		if (c == '%')
 		{
 			c = fmt[1];
-			if (c != '\0')
+			if (c == '\0')
 			{
-				if (lut[(u_char) c] != NULL)
+				if (rem > 0 && seek)
 				{
-					ret += (ssize_t) lut[(u_char)c](&seek, rem, ap);
-					fmt++;
+					error_flag = FT_ERROR;;
+//					*seek++ = '%';
 				}
-				else if (rem > 1)
-				{
-					if (seek)
-					{
-						*seek++ = '%';
-						*seek++ = c;
-					}
-					fmt++;
-					ret += 2;
-				}
+				ret++;
 			}
 			else
 			{
-				if (seek && rem > 0)
+				if (lut[(u_char) c] != NULL)
 				{
-					*seek++ = '%';
-					ret += 1;
+					ret += (ssize_t) lut[(u_char) c](&seek, rem, ap);
+					fmt++;
+				}
+				else
+				{
+					if (seek && rem > 0)
+						*seek++ = '%';
+					if (seek && rem > 1)
+						*seek++ = c;
+					ret += 2; // even if we can't write, count the character
+					fmt++;
 				}
 			}
 		}
 		else
 			ret += copy_as_is(rem, &fmt, &seek);
-		c = *++fmt;
+//		if (!error_flag)
+		fmt++;
+		c = *fmt;
 	}
-	return ((int)ret);
+	return (error_flag ? FT_ERROR : (int)ret);
 }
 
 int	ft_vsnprintf(char *dst, size_t size, const char *fmt, va_list ap)

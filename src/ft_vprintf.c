@@ -33,7 +33,7 @@ int	ft_vprintf(const char *format, va_list ap)
 	string = (char *) calloc(count + FT_TERMINATOR, sizeof(char));
 	if (string)
 	{
-		ft_vsnprintf(string, count + FT_TERMINATOR, format, ap_copy);
+		count = ft_vsnprintf(string, count + FT_TERMINATOR, format, ap_copy);
 		ft_putbyte_fd(string, count, STDOUT_FILENO);
 	}
 	va_end(ap_copy);

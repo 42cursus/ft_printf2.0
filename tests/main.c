@@ -232,7 +232,7 @@ int very_real_vprintf(const char *fmt, va_list ap)
 	return ret;
 }
 
-void	print_test(const char *s, ...)
+void	print_test(const char *fmt, ...)
 {
 	int 	fd[2];
 	int 	*read_end, *write_end, std_out;
@@ -263,9 +263,9 @@ void	print_test(const char *s, ...)
 
 	dup2(fd[STDOUT_FILENO], STDOUT_FILENO);
 
-	va_start(printf_args, s);
+	va_start(printf_args, fmt);
 
-	printf_ret = very_real_vprintf(s, printf_args);
+	printf_ret = very_real_vprintf(fmt, printf_args);
 
 	close(fd[STDOUT_FILENO]);
 	dup2(std_out, STDOUT_FILENO);
@@ -287,8 +287,8 @@ void	print_test(const char *s, ...)
 	std_out = dup(STDOUT_FILENO);
 	dup2(*write_end, STDOUT_FILENO);
 
-	va_start(ft_printf_args, s);
-	ft_printf_ret = ft_vprintf(s, ft_printf_args);
+	va_start(ft_printf_args, fmt);
+	ft_printf_ret = ft_vprintf(fmt, ft_printf_args);
 
 	close(fd[STDOUT_FILENO]);
 	dup2(std_out, STDOUT_FILENO);
@@ -320,7 +320,7 @@ void	print_test(const char *s, ...)
 			i = -1;
 			while (++i < ft_read_return)
 			{
-				format = isprint(printf_buf[i]) ? "%c" : "\\x%02X";
+				format = isprint(ft_printf_buf[i]) ? "%c" : "\\x%02X";
 				p += sprintf(p, format, ft_printf_buf[i]);
 			}
 			p = err_buf;
@@ -330,7 +330,8 @@ void	print_test(const char *s, ...)
 				format = isprint(printf_buf[i]) ? "%c" : "\\x%02X";
 				p += sprintf(p, format, printf_buf[i]);
 			}
-			fprintf(stdout, "got \"%s\" whilst \"%s\" was to be expected\n", ft_err_buf, err_buf);
+			fprintf(stdout, "for input format \"%s\" got \"%s\" whilst"
+				" \"%s\" was to be expected\n", fmt, ft_err_buf, err_buf);
 			TEST_FAIL();
 		}
 	}
@@ -349,19 +350,6 @@ int	main(void)
 
 	const char *s2 = "Mussum Ipsum, cacilds vidis litro abertis. Posuere libero varius. Nullam a nisl ut ante blandit hendrerit. Aenean sit amet nisi. Atirei o pau no gatis, per gatis num morreus.";
 
-	static char     a01;
-	static unsigned char a02;
-	static short a03;
-	static unsigned short a04;
-	static int a05;
-	static unsigned int a06;
-	static long a07;
-	static unsigned long a08;
-	static long long a09;
-	static unsigned long long a10;
-	static char *a11;
-	static void *a12;
-
 	ft_print_title("ft_dprintf_test");
 
 	char buf[10];
@@ -376,14 +364,6 @@ int	main(void)
 	RUN_TEST(print_test(" %% "));
 	RUN_TEST(print_test(" %%"));
 	RUN_TEST(print_test("%%c"));
-	RUN_TEST(print_test("%%%p"));
-	RUN_TEST(print_test("%%%z"));
-	RUN_TEST(print_test("%%%j"));
-	RUN_TEST(print_test("%%%k"));
-	RUN_TEST(print_test("%%k")); // Escaped percent + unknown specifier
-	RUN_TEST(print_test("Hello %q world")); 	// Valid format with unknown specifier
-	RUN_TEST(print_test("Hello %")); // Dangling '%'
-	RUN_TEST(print_test("%a %b %c")); // Multiple unknowns
 
 	RUN_TEST(print_test("%%%%%%"));
 	RUN_TEST(print_test("%%%c", 'x'));
@@ -423,6 +403,18 @@ int	main(void)
 	RUN_TEST(print_test("\n---%x\n", 0));
 	RUN_TEST(print_test("\n%x", 0));
 
+	static char     a01;
+	static unsigned char a02;
+	static short a03;
+	static unsigned short a04;
+	static int a05;
+	static unsigned int a06;
+	static long a07;
+	static unsigned long a08;
+	static long long a09;
+	static unsigned long long a10;
+	static char *a11;
+	static void *a12;
 	RUN_TEST(print_test("%p%p%p%p%p%p%p%p%p%p%p%p",&a01,&a02,&a03,&a04,&a05,&a06,&a07,&a08,&a09,&a10,&a11,&a12));
 
 	ft_print_title("snprintf_test");
@@ -463,6 +455,18 @@ int	main(void)
 
 	RUN_TEST(snprint_test("%p%p%p%p%p%p%p%p%p%p%p%p",&a01,&a02,&a03,&a04,&a05,&a06,&a07,&a08,&a09,&a10,&a11,&a12));
 
+
+	RUN_TEST(print_test("%%%p"));
+	RUN_TEST(print_test("%%%k"));
+	RUN_TEST(print_test("%%%b"));
+	RUN_TEST(print_test("%%k")); // Escaped percent + unknown specifier
+	RUN_TEST(print_test("Hello %b world")); 	// Valid format with unknown specifier
+	RUN_TEST(print_test("Hello %")); // Dangling '%'
+	RUN_TEST(print_test("%k %b %v")); // Multiple unknowns
+
+	//	RUN_TEST(print_test("%a %b %c")); // Multiple unknowns
+//	RUN_TEST(print_test("%%%z"));
+//	RUN_TEST(print_test("%%%j"));
 //	RUN_TEST(snprint_test("%5%"));
 //	RUN_TEST(print_test("%015d", 0));
 //	RUN_TEST(print_test("\n%a%x", 0));
