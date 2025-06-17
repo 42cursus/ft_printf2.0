@@ -27,18 +27,7 @@ int	ft_vsprintf(char *str, const char *format, va_list ap)
 	return (result);
 }
 
-char	*ft_strchrnul(const char *s, int c)
-{
-	while (*s)
-	{
-		if ((unsigned char) *s == (unsigned char) c)
-			break ;
-		s++;
-	}
-	return ((char *)s);
-}
-
-ssize_t 	copy_as_is(size_t size, const char **fmt, char **buf)
+ssize_t	copy_as_is(size_t size, const char **fmt, char **buf)
 {
 	const char *const	ptr = ft_strchrnul((*fmt), '%');
 	const size_t		i = (size_t)(ptr - *fmt);
@@ -51,59 +40,56 @@ ssize_t 	copy_as_is(size_t size, const char **fmt, char **buf)
 	return ((ssize_t)i);
 }
 
-int	ft_vsnprintf_internal(char **str, size_t size, const t_snprintf_f *lut,
-							va_list *ap)
+static inline __attribute__((always_inline))
+t_printf_var	handle_spec(va_list *const ap, t_printf_var v, ssize_t *ret)
 {
-	ssize_t			ret;
-	register char	c;
-	char			*seek;
-	int				error_flag = 0;
-	const char		*fmt = str[0];
-	char *const		buf = str[1];
+	char	cc;
 
-	seek = buf;
-	ret = 0;
-	c = *fmt;
-	while (c != '\0' && error_flag != FT_ERROR)
+	cc = v.fmt[1];
+	if (cc == '\0')
 	{
-		size_t rem = size - (seek - buf);
-		if (c == '%')
-		{
-			c = fmt[1];
-			if (c == '\0')
-			{
-				if (rem > 0 && seek)
-				{
-					error_flag = FT_ERROR;;
-//					*seek++ = '%';
-				}
-				ret++;
-			}
-			else
-			{
-				if (lut[(u_char) c] != NULL)
-				{
-					ret += (ssize_t) lut[(u_char) c](&seek, rem, ap);
-					fmt++;
-				}
-				else
-				{
-					if (seek && rem > 0)
-						*seek++ = '%';
-					if (seek && rem > 1)
-						*seek++ = c;
-					ret += 2; // even if we can't write, count the character
-					fmt++;
-				}
-			}
-		}
-		else
-			ret += copy_as_is(rem, &fmt, &seek);
-//		if (!error_flag)
-		fmt++;
-		c = *fmt;
+		if (v.rem > 0 && v.seek)
+			v.error_flag = FT_ERROR;
+		(*ret)++;
 	}
-	return (error_flag ? FT_ERROR : (int)ret);
+	else
+	{
+		if (v.lut[(u_char)cc] != NULL)
+			(*ret) += (ssize_t) v.lut[(u_char)cc](&v.seek, v.rem, ap);
+		else
+		{
+			if (v.seek && v.rem > 0)
+				*v.seek++ = '%';
+			if (v.seek && v.rem > 1)
+				*v.seek++ = cc;
+			(*ret) += 2;
+		}
+		v.fmt++;
+	}
+	return (v);
+}
+
+int	ft_vsnprintf_internal(t_printf_var v, size_t size, va_list *ap)
+{
+	register char	c;
+	ssize_t			ret;
+
+	ret = 0;
+	v.seek = v.buf;
+	c = *v.fmt;
+	while (c != '\0' && v.error_flag != FT_ERROR)
+	{
+		v.rem = size - (v.seek - v.buf);
+		if (c == '%')
+			v = handle_spec(ap, v, &ret);
+		else
+			ret += copy_as_is(v.rem, &v.fmt, &v.seek);
+		v.fmt++;
+		c = *v.fmt;
+	}
+	if (v.error_flag)
+		ret = FT_ERROR;
+	return ((int)ret);
 }
 
 int	ft_vsnprintf(char *dst, size_t size, const char *fmt, va_list ap)
@@ -111,6 +97,7 @@ int	ft_vsnprintf(char *dst, size_t size, const char *fmt, va_list ap)
 	int					ret;
 	size_t				mini_size;
 	va_list				ap_save;
+	t_printf_var		var;
 	static t_snprintf_f	lut[UCHAR_MAX] = {
 	['c'] = ft_snprint_c,
 	['%'] = ft_snprint_percent,
@@ -123,12 +110,10 @@ int	ft_vsnprintf(char *dst, size_t size, const char *fmt, va_list ap)
 	['s'] = ft_snprint_s,
 	};
 
-	mini_size = size;
-	if (size)
-		mini_size--;
+	mini_size = size - (size != 0) * 1;
 	va_copy(ap_save, ap);
-	ret = ft_vsnprintf_internal((char *[]){(char *)fmt, dst},
-			mini_size, lut, &ap_save);
+	var = (t_printf_var){.buf = dst, .fmt = fmt, .lut = lut};
+	ret = ft_vsnprintf_internal(var, mini_size, &ap_save);
 	va_end(ap_save);
 	if (size && ret >= 0)
 		dst[MIN(mini_size, (u_int)ret)] = '\0';

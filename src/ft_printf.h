@@ -36,6 +36,16 @@
 typedef size_t	(*t_printf_f)(int fd, va_list *ap);
 typedef size_t	(*t_snprintf_f)(char **buf, size_t size, va_list *ap);
 
+typedef struct s_vsnprintf
+{
+	char			*buf;
+	const char		*fmt;
+	char			*seek;
+	int				error_flag;
+	size_t			rem;
+	t_snprintf_f	*lut;
+}	t_printf_var;
+
 /* ---------- PRINTF -------------------- */
 int		ft_printf(const char *format, ...);
 int		ft_sprintf(char *str, const char *format, ...);
@@ -64,6 +74,7 @@ size_t	ft_snprint_u(char **buf, size_t size, va_list *ap);
 size_t	ft_snprint_percent(char **buf, size_t size, va_list *ap);
 size_t	ft_snprint_c(char **buf, size_t size, va_list *ap);
 
+char	*ft_strchrnul(const char *s, int c);
 char	*ft_uitoa(unsigned int nb);
 char	*ft_uitoa_base(unsigned int nb, const char *base);
 char	*ft_ultoa_buf_base(unsigned long abs,

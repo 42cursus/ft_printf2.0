@@ -26,7 +26,7 @@ size_t	ft_snprint_c(char **buf, size_t size, va_list *ap)
 
 size_t	ft_snprint_percent(char **buf, size_t size, va_list *ap)
 {
-	const size_t	desired =  MIN(1 + FT_TERMINATOR, size);
+	const size_t	desired = MIN(1 + FT_TERMINATOR, size);
 	char *const		str = (char [2]){'%', '\0'};
 
 	ft_memcpy(*buf, str, desired * sizeof(char));
