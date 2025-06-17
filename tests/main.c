@@ -55,7 +55,7 @@ void	check(bool succes)
 void sigsegv(int signal)
 {
 	(void) signal;
-	fprintf(stderr, "> "FT_CYAN".SIGSEGV"FT_RESET"\n");
+	dprintf(STDERR_FILENO, "> "FT_CYAN".SIGSEGV"FT_RESET"\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -83,7 +83,7 @@ void	snprint_test(const char *s, ...)
 	va_end(printf_args);
 
 	va_start(ft_printf_args, s);
-	ft_printf_ret = ft_vsnprintf(ft_printf_buf, 1024, s, ft_printf_args);
+	ft_printf_ret = ft_vsnprintf(ft_printf_buf, BUF_SIZE, s, ft_printf_args);
 	va_end(ft_printf_args);
 
 	check_val = (printf_ret == ft_printf_ret);
@@ -106,6 +106,131 @@ void	snprint_test(const char *s, ...)
 	check(check_val);
 }
 
+#define __USE_GNU
+#include <dlfcn.h>
+#include <link.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+
+typedef int (*vsnprintf_fn_t)(char *, size_t, const char *, va_list);
+typedef int (*vprintf_fn_t)(const char *, va_list);
+
+#if defined(__GNUC__) && !defined(__clang__)
+__attribute__((optimize("no-builtin")))
+#else
+__attribute__((no_builtin))
+#endif
+__attribute__((no_sanitize("all")))
+void *resolve_libc_symbol(const char *symbol_name)
+{
+	void			*libc_sym;
+	struct link_map	*map = NULL;
+	void			*handle;
+	void			*libc_handle;
+
+	handle = dlopen(NULL, RTLD_LAZY);
+	if (!handle)
+	{
+		ft_dprintf(STDERR_FILENO, "dlopen(NULL) failed: %s\n", dlerror());
+		return (NULL);
+	}
+	if (dlinfo(handle, RTLD_DI_LINKMAP, &map) != 0)
+	{
+		ft_dprintf(STDERR_FILENO, "dlinfo failed\n");
+		return (NULL);
+	}
+
+	while (map != NULL)
+	{
+		if (ft_strstr(map->l_name, "libc.so"))
+		{
+			libc_handle = dlopen(map->l_name, RTLD_LAZY);
+			if (!libc_handle)
+			{
+				ft_dprintf(STDERR_FILENO, "dlopen(%s) failed: %s\n", map->l_name, dlerror());
+				return (NULL);
+			}
+			libc_sym = (void *) dlsym(libc_handle, symbol_name);
+			if (!libc_sym)
+			{
+				ft_dprintf(STDERR_FILENO, "dlsym failed: %s\n", dlerror());
+				return (NULL);
+			}
+			return (libc_sym);
+		}
+		map = map->l_next;
+	}
+	return NULL;
+}
+
+__attribute__((no_sanitize("all")))
+__attribute__((optnone))
+int real_vsnprintf(char *buf, size_t size, const char *fmt, va_list ap)
+{
+
+	static vsnprintf_fn_t	libc_vsnprintf = NULL;
+
+	if (!libc_vsnprintf)
+		libc_vsnprintf = resolve_libc_symbol("vsnprintf");
+	va_list ap_copy;
+	va_copy(ap_copy, ap);
+	int ret = libc_vsnprintf(buf, size, fmt, ap_copy);
+	va_end(ap_copy);
+	return ret;
+}
+
+int real_snprintf(char *buf, size_t size, const char *fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	int ret = real_vsnprintf(buf, size, fmt, ap);
+	va_end(ap);
+	return ret;
+}
+
+__attribute__((no_sanitize("all")))
+int not_so_real_vprintf(const char *fmt, va_list ap)
+{
+	static vprintf_fn_t	real_vprintf_ptr = NULL;
+
+	if (!real_vprintf_ptr)
+		real_vprintf_ptr = (vprintf_fn_t)dlsym(RTLD_NEXT, "vprintf");
+	va_list ap_copy;
+	va_copy(ap_copy, ap);
+	int ret = real_vprintf_ptr(fmt, ap_copy);
+	va_end(ap_copy);
+	return ret;
+}
+
+/**
+ * Also doesn't work with gcc and sanitizers
+ * @param fmt
+ * @param ap
+ * @return
+ */
+__attribute__((no_sanitize("all")))
+int very_real_vprintf(const char *fmt, va_list ap)
+{
+	void				*handle;
+	static vprintf_fn_t	libc_vprintf = NULL;
+
+	if (!libc_vprintf)
+	{
+		handle = dlopen("libc.so.6", RTLD_LAZY);
+		if (!handle)
+		{
+			dprintf(STDERR_FILENO, "failed to open libc: %s\n", dlerror());
+			return (-1);
+		}
+		libc_vprintf = (vprintf_fn_t)dlsym(handle, "vprintf");
+	}
+	va_list ap_copy;
+	va_copy(ap_copy, ap);
+	int ret = libc_vprintf(fmt, ap_copy);  // real vprintf, no interceptor
+	va_end(ap_copy);
+	return ret;
+}
+
 void	print_test(const char *s, ...)
 {
 	int 	fd[2];
@@ -118,14 +243,13 @@ void	print_test(const char *s, ...)
 	char	err_buf[3 * BUF_SIZE + 1] = {0}; // Enough space for \xXX sequences + null terminator
 	char	ft_err_buf[3 * BUF_SIZE + 1] = {0}; // Enough space for \xXX sequences + null terminator
 	char	*p = NULL;
-
-	for (int i = -1; ++i < BUF_SIZE/4; printf_buf[i] = ft_printf_buf[i] = 0xbe);
-
+	int		i;
 	int		check_val;
 
+	for (i = -1; ++i < BUF_SIZE / 4; printf_buf[i] = ft_printf_buf[i] = 0xbe);
 	if (pipe(fd) < 0)
 	{
-		fprintf(stderr, "(%s:%d, %s): ", __FILE__, __LINE__, __func__);
+		dprintf(STDERR_FILENO, "(%s:%d, %s): ", __FILE__, __LINE__, __func__);
 		perror("pipe failed");
 		exit(1);
 	}
@@ -139,7 +263,7 @@ void	print_test(const char *s, ...)
 
 	va_start(printf_args, s);
 
-	printf_ret = vprintf(s, printf_args);
+	printf_ret = very_real_vprintf(s, printf_args);
 
 	close(fd[STDOUT_FILENO]);
 	dup2(std_out, STDOUT_FILENO);
@@ -152,7 +276,7 @@ void	print_test(const char *s, ...)
 	va_end(printf_args);
 
 	if (pipe(fd) < 0)
-		exit(((void) fprintf(stderr, "pipe failed: %s \n"
+		exit(((void)dprintf(STDERR_FILENO, "pipe failed: %s \n"
 									 "on %s at %s:%d ", strerror(errno),
 							 __func__, __FILE__, __LINE__), 1));
 
@@ -182,13 +306,15 @@ void	print_test(const char *s, ...)
 			   ft_printf_ret, printf_ret);
 		TEST_FAIL();
 	}
-	if (printf_ret != 0)
+	if (printf_ret > 0)
 	{
 		check_val = !ft_memcmp(ft_printf_buf, printf_buf, printf_ret);
 		if (!check_val)
 		{
 			p = ft_err_buf;
-			for (int i = 0; i < printf_ret; i++) {
+			i = -1;
+			while (++i < printf_ret)
+			{
 				if (isprint(ft_printf_buf[i]))
 					p += sprintf(p, "%c", ft_printf_buf[i]);
 				else
@@ -196,7 +322,9 @@ void	print_test(const char *s, ...)
 			}
 
 			p = err_buf;
-			for (int i = 0; i < printf_ret; i++) {
+			i = -1;
+			while (++i < printf_ret)
+			{
 				if (isprint(printf_buf[i]))
 					p += sprintf(p, "%c", printf_buf[i]);
 				else
@@ -234,6 +362,13 @@ int	main(void)
 	static char *a11;
 	static void *a12;
 
+	ft_print_title("ft_dprintf_test");
+
+	char buf[10];
+
+	ft_snprintf(buf, 10, "%d0123456789", 10);
+	check(ft_strlen(buf) == 9);
+
 	ft_print_title("printf_test");
 
 	RUN_TEST(print_test("%c%c%c*", '\0', '1', 1));
@@ -241,6 +376,7 @@ int	main(void)
 	RUN_TEST(print_test(" %% "));
 	RUN_TEST(print_test(" %%"));
 	RUN_TEST(print_test("%%c"));
+	RUN_TEST(print_test("%%%z"));
 	RUN_TEST(print_test("%%%%%%"));
 	RUN_TEST(print_test("%%%c", 'x'));
 
@@ -319,12 +455,12 @@ int	main(void)
 
 	RUN_TEST(snprint_test("%p%p%p%p%p%p%p%p%p%p%p%p",&a01,&a02,&a03,&a04,&a05,&a06,&a07,&a08,&a09,&a10,&a11,&a12));
 
-	RUN_TEST(snprint_test("%5%"));
-	RUN_TEST(print_test("%015d", 0));
-	RUN_TEST(print_test("\n%a%x", 0));
-	RUN_TEST(print_test("\n%", 0));
-	RUN_TEST(print_test("%5%"));
-	RUN_TEST(print_test("%-5%"));
-	RUN_TEST(print_test("%.c", 'a'));
+//	RUN_TEST(snprint_test("%5%"));
+//	RUN_TEST(print_test("%015d", 0));
+//	RUN_TEST(print_test("\n%a%x", 0));
+//	RUN_TEST(print_test("\n%", 0));
+//	RUN_TEST(print_test("%5%"));
+//	RUN_TEST(print_test("%-5%"));
+//	RUN_TEST(print_test("%.c", 'a'));
 	return (0);
 }

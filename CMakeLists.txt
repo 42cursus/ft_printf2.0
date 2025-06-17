@@ -16,6 +16,7 @@ set(CMAKE_C_COMPILER gcc)
 
 project(ft_printf C)
 set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 99)
 
 include_directories(include)
@@ -27,7 +28,7 @@ set(FT_CFLAGS
         -Wno-error=unused-function
         -Wno-error=unused-variable
         -O0         -g3 -gdwarf-3
-        -masm=att -MMD
+        -masm=att
         -fasynchronous-unwind-tables
         -fdata-sections
         -fsanitize=address
@@ -101,7 +102,7 @@ add_executable(${TARGET_NAME} ${TARGET_HEADERS} ${TARGET_SOURCES})
 target_compile_options(${TARGET_NAME} PRIVATE ${TARGET_CFLAGS})
 target_include_directories(${TARGET_NAME} PRIVATE include src)
 target_link_options(${TARGET_NAME} PRIVATE ${COMMON_LDFLAGS})
-target_link_libraries(${TARGET_NAME} ${FTPRINTF_TARGET_NAME})
+target_link_libraries(${TARGET_NAME} ${FTPRINTF_TARGET_NAME} -ldl)
 set_target_properties(${TARGET_NAME} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/tests"
         OUTPUT_NAME "ft_printf_test")

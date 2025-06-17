@@ -34,9 +34,9 @@ int	ft_vprintf(const char *format, va_list ap)
 	if (string)
 	{
 		ft_vsnprintf(string, count + FT_TERMINATOR, format, ap_copy);
-//		ft_putstr_fd(string, STDOUT_FILENO);
 		ft_putbyte_fd(string, count, STDOUT_FILENO);
 	}
+	va_end(ap_copy);
 	free(string);
 	return (count);
 }
@@ -84,6 +84,7 @@ int	ft_vdprintf_internal(int fd, const char	*fmt, const t_printf_f *lut,
 
 int	ft_vdprintf(int fd, const char	*fmt, va_list ap)
 {
+	int					count;
 	va_list				ap_save;
 	static t_printf_f	lut[UCHAR_MAX] = {
 	['c'] = ft_print_c,
@@ -98,5 +99,7 @@ int	ft_vdprintf(int fd, const char	*fmt, va_list ap)
 	};
 
 	va_copy (ap_save, ap);
-	return (ft_vdprintf_internal(fd, fmt, lut, &ap_save));
+	count = ft_vdprintf_internal(fd, fmt, lut, &ap_save);
+	va_end(ap_save);
+	return (count);
 }

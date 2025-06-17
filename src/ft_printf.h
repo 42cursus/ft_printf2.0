@@ -38,9 +38,12 @@ typedef size_t	(*t_snprintf_f)(char **buf, size_t size, va_list *ap);
 
 /* ---------- PRINTF -------------------- */
 int		ft_printf(const char *format, ...);
+int		ft_sprintf(char *str, const char *format, ...);
+int		ft_snprintf(char *str, size_t size, const char *format, ...);
+int		ft_dprintf(int fd, const char *format, ...);
 int		ft_vprintf(const char *fmt, va_list ap);
 int		ft_vdprintf(int fd, const char	*fmt, va_list ap);
-int		ft_vsnprintf(char *str, size_t size, const char *fmt, va_list ap);
+int		ft_vsnprintf(char *dst, size_t size, const char *fmt, va_list ap);
 int		ft_vsprintf(char *str, const char *format, va_list ap);
 
 size_t	ft_print_p(int fd, va_list *ap);
