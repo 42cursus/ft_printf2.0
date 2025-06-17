@@ -15,12 +15,16 @@
 
 int	ft_vsprintf(char *str, const char *format, va_list ap)
 {
-	int	result;
+	int		result;
+	va_list	ap_save;
 
+	va_copy(ap_save, ap);
 	result = ft_vsnprintf(NULL, 0, format, ap);
 	if (result < 0)
 		return (FT_ERROR);
-	return (ft_vsnprintf(str, (size_t)result + 1, format, ap));
+	ft_vsnprintf(str, (size_t)result + 1, format, ap);
+	va_end(ap_save);
+	return (result);
 }
 
 char	*ft_strchrnul(const char *s, int c)
@@ -34,7 +38,7 @@ char	*ft_strchrnul(const char *s, int c)
 	return ((char *)s);
 }
 
-size_t	copy_as_is(size_t size, const char **fmt, char **buf)
+ssize_t 	copy_as_is(size_t size, const char **fmt, char **buf)
 {
 	const char *const	ptr = ft_strchrnul((*fmt), '%');
 	const size_t		i = ptr - (*fmt);
@@ -49,13 +53,13 @@ size_t	copy_as_is(size_t size, const char **fmt, char **buf)
 		desired--;
 	if (*buf)
 		(*buf) += desired;
-	return (i);
+	return ((ssize_t)i);
 }
 
 int	ft_vsnprintf_internal(char **str, size_t size, const t_snprintf_f *lut,
 							va_list *ap)
 {
-	size_t			ret;
+	ssize_t			ret;
 	register char	c;
 	char			*seek;
 	const char		*fmt = str[0];
@@ -64,27 +68,41 @@ int	ft_vsnprintf_internal(char **str, size_t size, const t_snprintf_f *lut,
 	seek = buf;
 	ret = 0;
 	c = *fmt;
-	while (c != '\0')
+	while (c != '\0' && ret != -1)
 	{
-		size_t leftover = size - (seek - buf);
+		size_t rem = size - (seek - buf);
 		if (c == '%')
 		{
-			c = *++fmt;
-			if (c == '\0')
-				fmt--;
-			else
+			c = fmt[1];
+			if (c != '\0')
 			{
 				if (lut[(u_char) c] != NULL)
-					ret += lut[(u_char) c](&seek, leftover, ap);
-				else
 				{
-					ret = -1;
-					break;
+					ret += (ssize_t) lut[(u_char)c](&seek, rem, ap);
+					fmt++;
+				}
+				else if (rem > 1)
+				{
+					if (seek)
+					{
+						*seek++ = '%';
+						*seek++ = c;
+					}
+					fmt++;
+					ret += 2;
+				}
+			}
+			else
+			{
+				if (seek && rem > 0)
+				{
+					*seek++ = '%';
+					ret += 1;
 				}
 			}
 		}
 		else
-			ret += copy_as_is(leftover, &fmt, &seek);
+			ret += copy_as_is(rem, &fmt, &seek);
 		c = *++fmt;
 	}
 	return ((int)ret);
@@ -113,7 +131,8 @@ int	ft_vsnprintf(char *dst, size_t size, const char *fmt, va_list ap)
 	va_copy(ap_save, ap);
 	ret = ft_vsnprintf_internal((char *[]){(char *)fmt, dst},
 			mini_size, lut, &ap_save);
-	if (size)
+	va_end(ap_save);
+	if (size && ret >= 0)
 		dst[MIN(mini_size, (u_int)ret)] = '\0';
 	return (ret);
 }
